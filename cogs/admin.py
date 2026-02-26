@@ -2,11 +2,28 @@ import discord
 from discord.ext import commands
 from discord.utils import get
 import asyncio
+import sqlite3
 
 class Admin(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.warnings = {}
+        # Connect to SQLite
+        self.conn = sqlite3.connect("admin.db")
+        self.cursor = self.conn.cursor()
+        # Create warnings table
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS warnings (
+                user_id INTEGER PRIMARY KEY,
+                warnings INTEGER DEFAULT 0
+            )
+        """)
+        # Create mutes table
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS mutes (
+                user_id INTEGER PRIMARY KEY
+            )
+        """)
+        self.conn.commit()
 
     # -----------------------
     # MODERATION COMMANDS
@@ -40,14 +57,13 @@ class Admin(commands.Cog):
             await ctx.send(f"👢 {user} has been kicked via ID. Reason: {reason}")
         else:
             await ctx.send("❌ User not found on this server.")
-            
-     # -----------------------
+
+    # -----------------------
     # UNBAN BY ID
     # -----------------------
     @commands.command(name="unban")
     @commands.has_permissions(ban_members=True)
     async def unban(self, ctx, user_id: int):
-        """Unban a user by their ID"""
         try:
             banned_users = await ctx.guild.bans()
             user = next((entry.user for entry in banned_users if entry.user.id == user_id), None)
@@ -73,6 +89,9 @@ class Admin(commands.Cog):
             for channel in ctx.guild.channels:
                 await channel.set_permissions(muted_role, send_messages=False, speak=False)
         await member.add_roles(muted_role, reason=reason)
+        # Add to database
+        self.cursor.execute("INSERT OR IGNORE INTO mutes(user_id) VALUES(?)", (member.id,))
+        self.conn.commit()
         await ctx.send(f"🔇 {member} has been muted. Reason: {reason}")
 
     @commands.command(name="unmute")
@@ -81,6 +100,9 @@ class Admin(commands.Cog):
         muted_role = get(ctx.guild.roles, name="Muted")
         if muted_role in member.roles:
             await member.remove_roles(muted_role)
+            # Remove from database
+            self.cursor.execute("DELETE FROM mutes WHERE user_id = ?", (member.id,))
+            self.conn.commit()
             await ctx.send(f"🔊 {member} has been unmuted.")
         else:
             await ctx.send("❌ This member is not muted.")
@@ -94,23 +116,37 @@ class Admin(commands.Cog):
         await ctx.send("🔇 All members in voice have been muted.")
 
     # -----------------------
-    # WARNINGS
+    # WARNINGS (SQLite)
     # -----------------------
     @commands.command(name="warn")
     @commands.has_permissions(manage_messages=True)
     async def warn(self, ctx, member: discord.Member, *, reason="No reason"):
         user_id = member.id
-        self.warnings[user_id] = self.warnings.get(user_id, 0) + 1
-        await ctx.send(f"⚠️ {member} has received a warning. Total: {self.warnings[user_id]} | Reason: {reason}")
+        self.cursor.execute("SELECT warnings FROM warnings WHERE user_id = ?", (user_id,))
+        result = self.cursor.fetchone()
+        if result:
+            new_count = result[0] + 1
+            self.cursor.execute("UPDATE warnings SET warnings = ? WHERE user_id = ?", (new_count, user_id))
+        else:
+            new_count = 1
+            self.cursor.execute("INSERT INTO warnings (user_id, warnings) VALUES (?, ?)", (user_id, new_count))
+        self.conn.commit()
+        await ctx.send(f"⚠️ {member} has received a warning. Total: {new_count} | Reason: {reason}")
 
     @commands.command(name="clearwarns")
     @commands.has_permissions(manage_messages=True)
     async def clearwarns(self, ctx, member: discord.Member):
-        if member.id in self.warnings:
-            self.warnings.pop(member.id)
-            await ctx.send(f"✅ Warnings for {member} have been cleared.")
-        else:
-            await ctx.send("ℹ️ This member has no warnings.")
+        self.cursor.execute("DELETE FROM warnings WHERE user_id = ?", (member.id,))
+        self.conn.commit()
+        await ctx.send(f"✅ Warnings for {member} have been cleared.")
+
+    @commands.command(name="warns")
+    async def warns(self, ctx, member: discord.Member = None):
+        member = member or ctx.author
+        self.cursor.execute("SELECT warnings FROM warnings WHERE user_id = ?", (member.id,))
+        result = self.cursor.fetchone()
+        count = result[0] if result else 0
+        await ctx.send(f"⚠️ {member} has {count} warning(s).")
 
     # -----------------------
     # CHANNEL CONTROL
@@ -212,7 +248,7 @@ class Admin(commands.Cog):
                 success += 1
             except (discord.Forbidden, discord.HTTPException):
                 failed += 1
-            await asyncio.sleep(0.1)  # avoid rate limits
+            await asyncio.sleep(0.1)
         await ctx.send(f"✅ {success} members received the message.\n⚠️ {failed} members could not be contacted.")
 
 # -----------------------
