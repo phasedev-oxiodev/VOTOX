@@ -15,6 +15,7 @@
 **VOTOX** is a feature-rich Discord bot focused on:
 
 - 🛡️ Server protection (AntiNuke & AntiRaid)
+- 🧰 Use SQLite
 - ⚙️ Modular command system using Cogs
 - 🔄 Dynamic rotating bot presence
 - 🧰 Utility commands
