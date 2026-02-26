@@ -1,8 +1,14 @@
-# 🤖 VOTOX
+<p align="center">
+  <img src="https://cdn.discordapp.com/avatars/1475949970711380069/f3c6ac73186035b46e4a32a067bc72f1.png?size=1024" width="180" height="180" style="border-radius:50%;">
+</p>
 
-> A powerful, modular Discord bot built with `discord.py`  
-> Designed for utilities, moderation, antinuke protection, fun commands, and scalable server management.
+<h1 align="center">🤖 VOTOX</h1>
 
+<p align="center">
+  Powerful • Modular • Secure Discord Bot
+</p>
+
+---
 ---
 
 ## ✨ Overview
