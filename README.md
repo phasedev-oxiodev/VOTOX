@@ -221,18 +221,6 @@ Contributions are welcome!
 3. Make your changes
 4. Open a Pull Request
 
----
-
-## 📜 License
-
-Add your preferred license here (MIT recommended).
-
-Example:
-
-```
-MIT License
-Copyright (c) 2026 PhaseDev
-```
 
 ---
 
