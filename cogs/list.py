@@ -1,20 +1,14 @@
 import discord
 from discord.ext import commands
 
-ALLOWED_USERS = [1320349118102769767, 1461537788754399232]
-
 class ListServers(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command()
     async def list(self, ctx):
-        # Permission check
-        if ctx.author.id not in ALLOWED_USERS:
-            return await ctx.send("You are not allowed to use this command.")
-
         if not self.bot.guilds:
-            return await ctx.send("I am not in any servers.")
+            return await ctx.send("I am not in any servers. But How To Did That Commands")
 
         embed = discord.Embed(
             title="Votox Server List",
