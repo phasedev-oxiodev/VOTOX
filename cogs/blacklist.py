@@ -23,21 +23,15 @@ def init_db():
     conn.close()
 
 class Blacklist(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         init_db()
-        self.tree = bot.tree
-        self.tree.add_command(self.blacklist_user)
-        self.tree.add_command(self.unblacklist_user)
-        self.tree.add_command(self.blacklist_server)
-        self.tree.add_command(self.unblacklist_server)
 
     # ----------------- USER BLACKLIST -----------------
     @app_commands.command(name="blacklist_user", description="Blacklist a user from using the bot")
-    @app_commands.checks.has_permissions(administrator=True)
     async def blacklist_user(self, interaction: discord.Interaction, user: discord.User):
         if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed to use this command.", ephemeral=True)
+            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
@@ -49,7 +43,7 @@ class Blacklist(commands.Cog):
     @app_commands.command(name="unblacklist_user", description="Remove a user from the blacklist")
     async def unblacklist_user(self, interaction: discord.Interaction, user: discord.User):
         if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed to use this command.", ephemeral=True)
+            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
@@ -62,7 +56,7 @@ class Blacklist(commands.Cog):
     @app_commands.command(name="blacklist_server", description="Blacklist this server from using the bot")
     async def blacklist_server(self, interaction: discord.Interaction):
         if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed to use this command.", ephemeral=True)
+            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
@@ -74,7 +68,7 @@ class Blacklist(commands.Cog):
     @app_commands.command(name="unblacklist_server", description="Remove this server from the blacklist")
     async def unblacklist_server(self, interaction: discord.Interaction):
         if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed to use this command.", ephemeral=True)
+            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
@@ -86,16 +80,15 @@ class Blacklist(commands.Cog):
     # ----------------- CHECKS -----------------
     @commands.Cog.listener()
     async def on_command(self, ctx):
-        # Check user
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
+        # User blacklist
         c.execute("SELECT * FROM user_blacklist WHERE user_id = ?", (ctx.author.id,))
         if c.fetchone():
             await ctx.send("You are blacklisted and cannot use commands ❌")
             ctx.command.reset_cooldown(ctx)
             raise commands.CheckFailure("User is blacklisted")
-
-        # Check server
+        # Server blacklist
         c.execute("SELECT * FROM server_blacklist WHERE guild_id = ?", (ctx.guild.id,))
         if c.fetchone():
             await ctx.send("This server is blacklisted and cannot use commands ❌")
@@ -103,5 +96,5 @@ class Blacklist(commands.Cog):
             raise commands.CheckFailure("Server is blacklisted")
         conn.close()
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(Blacklist(bot))
