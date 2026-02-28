@@ -23,7 +23,7 @@ FAKE_SONGS = [
 ]
 
 # List of your actual cogs
-COGS4 = ["admin", "help", "fun", "world", "utilities", "hrm", "antinuke", "antiraid", "server", "PingResponder", "snipe", "list"]
+COGS4 = ["admin", "help", "fun", "world", "utilities", "hrm", "antinuke", "antiraid", "server", "PingResponder", "snipe", "list", "blacklist"]
 
 # -----------------------
 # DYNAMIC PRESENCE
