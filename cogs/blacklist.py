@@ -4,7 +4,6 @@ from discord import app_commands
 import sqlite3
 
 DB_NAME = "blacklist.db"
-ALLOWED_USERS = [1320349118102769767, 1461537788754399232]
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -22,79 +21,66 @@ def init_db():
     conn.commit()
     conn.close()
 
-class Blacklist(commands.Cog):
+class GlobalBlacklist(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         init_db()
 
-    # ----------------- USER BLACKLIST -----------------
-    @app_commands.command(name="blacklist_user", description="Blacklist a user from using the bot")
-    async def blacklist_user(self, interaction: discord.Interaction, user: discord.User):
-        if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
-
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO user_blacklist (user_id) VALUES (?)", (user.id,))
-        conn.commit()
-        conn.close()
-        await interaction.response.send_message(f"{user.mention} has been blacklisted 🔒")
-
-    @app_commands.command(name="unblacklist_user", description="Remove a user from the blacklist")
-    async def unblacklist_user(self, interaction: discord.Interaction, user: discord.User):
-        if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
-
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-        c.execute("DELETE FROM user_blacklist WHERE user_id = ?", (user.id,))
-        conn.commit()
-        conn.close()
-        await interaction.response.send_message(f"{user.mention} has been removed from the blacklist ✅")
-
-    # ----------------- SERVER BLACKLIST -----------------
-    @app_commands.command(name="blacklist_server", description="Blacklist this server from using the bot")
-    async def blacklist_server(self, interaction: discord.Interaction):
-        if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
-
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO server_blacklist (guild_id) VALUES (?)", (interaction.guild.id,))
-        conn.commit()
-        conn.close()
-        await interaction.response.send_message(f"This server `{interaction.guild.name}` has been blacklisted 🔒")
-
-    @app_commands.command(name="unblacklist_server", description="Remove this server from the blacklist")
-    async def unblacklist_server(self, interaction: discord.Interaction):
-        if interaction.user.id not in ALLOWED_USERS:
-            return await interaction.response.send_message("You are not allowed.", ephemeral=True)
-
-        conn = sqlite3.connect(DB_NAME)
-        c = conn.cursor()
-        c.execute("DELETE FROM server_blacklist WHERE guild_id = ?", (interaction.guild.id,))
-        conn.commit()
-        conn.close()
-        await interaction.response.send_message(f"This server `{interaction.guild.name}` has been removed from the blacklist ✅")
-
-    # ----------------- CHECKS -----------------
+    # ---------------- GLOBAL COMMAND CHECK ----------------
     @commands.Cog.listener()
     async def on_command(self, ctx):
+        # Block blacklisted users or servers from legacy commands
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
-        # User blacklist
-        c.execute("SELECT * FROM user_blacklist WHERE user_id = ?", (ctx.author.id,))
+
+        # Check user
+        c.execute("SELECT 1 FROM user_blacklist WHERE user_id = ?", (ctx.author.id,))
         if c.fetchone():
             await ctx.send("You are blacklisted and cannot use commands ❌")
             ctx.command.reset_cooldown(ctx)
+            conn.close()
             raise commands.CheckFailure("User is blacklisted")
-        # Server blacklist
-        c.execute("SELECT * FROM server_blacklist WHERE guild_id = ?", (ctx.guild.id,))
-        if c.fetchone():
-            await ctx.send("This server is blacklisted and cannot use commands ❌")
-            ctx.command.reset_cooldown(ctx)
-            raise commands.CheckFailure("Server is blacklisted")
+
+        # Check server
+        if ctx.guild:
+            c.execute("SELECT 1 FROM server_blacklist WHERE guild_id = ?", (ctx.guild.id,))
+            if c.fetchone():
+                await ctx.send("This server is blacklisted and cannot use commands ❌")
+                ctx.command.reset_cooldown(ctx)
+                conn.close()
+                raise commands.CheckFailure("Server is blacklisted")
+
         conn.close()
 
+    # ---------------- GLOBAL SLASH COMMAND CHECK ----------------
+    async def cog_before_invoke(self, ctx_or_interaction):
+        # Works for slash commands (app_commands)
+        if isinstance(ctx_or_interaction, discord.Interaction):
+            user_id = ctx_or_interaction.user.id
+            guild_id = ctx_or_interaction.guild.id if ctx_or_interaction.guild else None
+
+            conn = sqlite3.connect(DB_NAME)
+            c = conn.cursor()
+            # User check
+            c.execute("SELECT 1 FROM user_blacklist WHERE user_id = ?", (user_id,))
+            if c.fetchone():
+                await ctx_or_interaction.response.send_message(
+                    "You are blacklisted and cannot use commands ❌", ephemeral=True
+                )
+                conn.close()
+                raise app_commands.CheckFailure("User is blacklisted")
+
+            # Server check
+            if guild_id:
+                c.execute("SELECT 1 FROM server_blacklist WHERE guild_id = ?", (guild_id,))
+                if c.fetchone():
+                    await ctx_or_interaction.response.send_message(
+                        "This server is blacklisted and cannot use commands ❌", ephemeral=True
+                    )
+                    conn.close()
+                    raise app_commands.CheckFailure("Server is blacklisted")
+
+            conn.close()
+
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Blacklist(bot))
+    await bot.add_cog(GlobalBlacklist(bot))
