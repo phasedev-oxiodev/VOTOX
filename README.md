@@ -14,7 +14,6 @@
 
 **VOTOX** is a feature-rich Discord bot focused on:
 
-- 🛡️ Server protection (AntiNuke & AntiRaid)
 - 🧰 Use SQLite
 - ⚙️ Modular command system using Cogs
 - 🔄 Dynamic rotating bot presence
@@ -29,8 +28,6 @@ The bot is built for flexibility and easy expansion.
 ## 🚀 Features
 
 ### 🛡️ Protection System
-- Anti-nuke system
-- Anti-raid detection
 - Channel & role protection
 - Logging system support
 
@@ -110,7 +107,7 @@ pip install -r requirements.txt
 Open `main.py` and replace:
 
 ```python
-TOKEN = "YOUR_BOT_TOKEN"
+TOKEN = "TOKEN-NIGGER"
 ```
 
 With your real token:
