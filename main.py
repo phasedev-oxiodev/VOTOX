@@ -91,7 +91,7 @@ async def main():
                 print(f"✅ Loaded cog: {cog}")
             except Exception as e:
                 print(f"❌ Failed to load cog {cog}: {e}")
-        await bot.start("MTQ3NzM4MzM5MTc0NDg4ODg2Mw.GajyoG.Ug7jLjeAwFEKa76iaqaO28OEMlwrPRUpuUQGP4")  # Replace with your bot token
+        await bot.start("TOKEN-NIGGER")  # Replace with your bot token
 
 # -----------------------
 # START BOT
